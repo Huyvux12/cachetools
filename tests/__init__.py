@@ -464,6 +464,7 @@ class CacheTestMixin(SimplifiedTestCaseProtocol):
         source.update({1: 1, 2: 2})
 
         cache = pickle.loads(pickle.dumps(source))
+        self.assertIsNot(source, cache)
         self.assertEqual(source, cache)
 
         self.assertEqual(2, len(cache))
@@ -475,10 +476,10 @@ class CacheTestMixin(SimplifiedTestCaseProtocol):
         self.assertEqual(3, cache[3])
         self.assertTrue(1 in cache or 2 in cache)
 
-        cache[4] = 4
-        self.assertEqual(2, len(cache))
-        self.assertEqual(4, cache[4])
-        self.assertTrue(1 in cache or 2 in cache or 3 in cache)
+        self.assertEqual(2, len(source))
+        self.assertIn(1, source)
+        self.assertIn(2, source)
+        self.assertNotIn(3, source)
 
         self.assertEqual(cache, pickle.loads(pickle.dumps(cache)))
 
@@ -491,5 +492,43 @@ class CacheTestMixin(SimplifiedTestCaseProtocol):
             source = self.Cache(maxsize=n)
             source.update((i, i) for i in range(n))
             cache = pickle.loads(pickle.dumps(source))
+            self.assertEqual(n, len(cache))
+            self.assertEqual(source, cache)
+
+    def test_deepcopy(self):
+        import copy
+
+        source = self.Cache(maxsize=2)
+        source.update({1: 1, 2: 2})
+
+        cache = copy.deepcopy(source)
+        self.assertIsNot(source, cache)
+        self.assertEqual(source, cache)
+
+        self.assertEqual(2, len(cache))
+        self.assertEqual(1, cache[1])
+        self.assertEqual(2, cache[2])
+
+        cache[3] = 3
+        self.assertEqual(2, len(cache))
+        self.assertEqual(3, cache[3])
+        self.assertTrue(1 in cache or 2 in cache)
+
+        self.assertEqual(2, len(source))
+        self.assertIn(1, source)
+        self.assertIn(2, source)
+        self.assertNotIn(3, source)
+
+        self.assertEqual(cache, copy.deepcopy(cache))
+
+    def test_deepcopy_maxsize(self):
+        import copy
+        import sys
+
+        # test empty cache, single element, large cache (recursion limit)
+        for n in [0, 1, sys.getrecursionlimit() * 2]:
+            source = self.Cache(maxsize=n)
+            source.update((i, i) for i in range(n))
+            cache = copy.deepcopy(source)
             self.assertEqual(n, len(cache))
             self.assertEqual(source, cache)
